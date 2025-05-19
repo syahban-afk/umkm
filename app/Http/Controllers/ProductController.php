@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductReview;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ProductController extends Controller
 {
@@ -62,7 +65,20 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        return response()->json($product->load('category'));
+        $product->load(['category', 'discounts' => function ($q) {
+            $q->where('end_date', '>', now())
+                ->orderBy('percentage', 'desc')
+                ->limit(1);
+        }]);
+
+        $reviews = $product->reviews()->with('user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return Inertia::render('Product/Detail', [
+            'product' => $product,
+            'reviews' => $reviews,
+        ]);
     }
 
     public function update(Request $request, Product $product)
